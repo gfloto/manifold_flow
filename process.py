@@ -13,50 +13,25 @@ class Process:
         t = torch.rand(1).to(self.device)
         return t
 
-    # process defined by x dt = f()dt + g()dW 
-    # g() is sig * identity matrix for now
-    def xt(self, x0, t):
+    # process defined by x dt = f()dt + g()dW
+    def xt(self, x0, t, a=4):
+        # noising term / diffusion        
+        sig = t.sqrt() * torch.ones_like(x0)
+        sig[:, 2] = 0 # don't noise z
+
+        # step  1: project onto manifold
         if t.item() < 0.5:
-            # project onto manifold
-            xt, mu = self.xt_1(x0, t)
+            t = 2*t
+            mu = x0 * (-a*t).exp()
+            mu[:, [0,1]] = x0[:, [0,1]] # project z onto manifold
+
+        # step 2: move torward origin on manifold
         elif t.item() >= 0.5:
-            xt, mu = self.xt_2(x0, t)
-        return xt, mu
+            t = 2*t - 1
+            mu = x0 * (-a*t).exp()
+            mu[:, 2] = 0 # keep z on manifold
 
-    # first part of diffusion, move towards sub-manifold
-    def xt_1(self, x0, t):
-        # get drift term (constant in time towards sub-manifold)
-        f = -2*x0
-        f[:, [0,1]] = 0 # only move 1 dim
-
-        # get diffusion term (linear in time)
-        g = t * torch.ones(3)
-        g[2] = 0 
-
-        # brownian noise
-        dB = torch.randn_like(x0)
-
-        # return xt 
-        mu = x0 + f*t
-        xt = mu #+ g*dB
-        return xt, mu
-
-    # second part of diffusion, move along sub-manifold
-    def xt_2(self, x0, t):
-        f = -2*x0
-        f[:, 2] = 0 # move first 2 dimensions now
-
-        # get diffusion term (linear in time)
-        g = t * torch.ones(3)
-        g[2] = 0
-
-        # brownian noise
-        dB = torch.randn_like(x0)
-
-        # return xt
-        mu = x0 + f*(t-0.5) 
-        xt = mu #+ g*dB
-        xt[:,2] = 0
+        xt = mu + sig*torch.randn_like(x0)
         return xt, mu
 
     # score := grad log pdf, pdf = gaussian 
