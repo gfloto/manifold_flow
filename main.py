@@ -1,4 +1,5 @@
 import sys, os 
+import json
 import torch 
 import numpy as np
 import argparse
@@ -12,8 +13,18 @@ from process import Process
 from model import Model
 from train import train
 
+# sample arguments as json
+def save_args(args):
+    # save args as json
+    args_dict = vars(args)
+    os.makedirs(args.exp, exist_ok=True)
+    with open(save_path(args, 'args.json'), 'w') as f:
+        json.dump(args_dict, f)
+
 if __name__ == '__main__':
+    # load and save args
     args = get_args()
+    save_args(args)
 
     # get dataset, process et. al
     loader = Loader(args)
