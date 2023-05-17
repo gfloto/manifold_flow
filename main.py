@@ -47,15 +47,14 @@ if __name__ == '__main__':
             save_flag = True
 
         # plot loss and save model
-        if epoch % 100 == 0:
-            np.save(save_path(args, 'loss.npy'), np.array(loss_track))
-            plt.plot(loss_track)
-            plt.yscale('log')
-            plt.savefig(save_path(args, 'loss.png'))
-            plt.close()
+        np.save(save_path(args, 'loss.npy'), np.array(loss_track))
+        plt.plot(loss_track)
+        plt.yscale('log')
+        plt.savefig(save_path(args, 'loss.png'))
+        plt.close()
 
-            if save_flag:
-                save_flag = False
-                print('saving model...')
-                torch.save(model.state_dict(), save_path(args, f'model.pt'))
-                torch.save(opt.state_dict(), save_path(args, f'opt.pt'))
+        if save_flag:
+            save_flag = False
+            print('saving model...')
+            torch.save(model.state_dict(), save_path(args, f'model.pt'))
+            torch.save(opt.state_dict(), save_path(args, f'opt.pt'))

@@ -15,9 +15,9 @@ def save_vis(x, path, i, show=False):
     # plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlim(-6, 6)
-    ax.set_ylim(-6, 6)
-    ax.set_zlim(-3, 3)
+    ax.set_xlim(-4, 4)
+    ax.set_ylim(-4, 4)
+    ax.set_zlim(-1.5, 1.5)
 
     # set camera angle
     ax.view_init(0.4*i + 10, 0.75*i)

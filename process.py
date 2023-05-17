@@ -1,6 +1,10 @@
 import sys 
 import torch 
 
+# noise function for z when t < 0.5
+def gamma(t):
+    return 1 - (4*t-1).pow(2)
+
 # noise at t=0 -> data at x1
 # score matching to project data onto sub-manifold
 class Process:
@@ -14,25 +18,24 @@ class Process:
         return t
 
     # process defined by x dt = f()dt + g()dW
-    def xt(self, x0, t, a=4):
-        # noising term / diffusion        
-        sig = t.sqrt() * torch.ones_like(x0)
-
+    def xt(self, x0, t, a=8):
         # step  1: project onto manifold
         if t.item() < 0.5:
-            t_ = 0.25 - (t - 0.25).abs()
-            sig[:, 2] = t_.sqrt()
+            mu = x0.clone()
+            mu[:, 2] *= (-a*t).exp()
 
-            t = 2*t
-            mu = x0 * (-a*t).exp()
-            mu[:, [0,1]] = x0[:, [0,1]] # project z onto manifold
+            sig = t * torch.ones_like(x0)
+            var2 = gamma(t).pow(2) / (2*a) * (1 - (-a*t).exp())
+            sig[:, 2] = var2.sqrt()
 
         # step 2: move torward origin on manifold
         elif t.item() >= 0.5:
-            t = 2*t - 1
-            mu = x0 * (-a/2*t).exp()
-            mu[:, 2] = 0 # keep z on manifold
+            # get mu, then sigma
+            mu = x0 * (-a*(t-0.5)).exp()
+            mu[:, 2] = 0
 
+            var = 0.5*( 1 - (-2*a*(t-0.5)).exp() )
+            sig = var.sqrt() * torch.ones_like(x0)
             sig[:, 2] = 0
         
         xt = mu + sig*torch.randn_like(x0)
@@ -40,7 +43,7 @@ class Process:
 
     # score := grad log pdf, pdf = gaussian 
     def score(self, xt, mu, sigma):
-        score = -0.5 * ( (xt - mu) / sigma ).pow(2)
+        score = -(xt - mu) / sigma
         return score
 
 import os
@@ -68,7 +71,7 @@ if __name__ == '__main__':
     t = torch.linspace(0, 1, T).to(args.device)
     for i in tqdm(range(T)):
         # get noised data
-        xt, _ = process.xt(x0, t[i])
+        xt, mu, sig = process.xt(x0, t[i])
 
         # save image
         save_vis(xt, f'imgs/{i}.png', i)

@@ -1,5 +1,6 @@
 import sys, os 
 import torch
+import numpy as np
 import matplotlib.pyplot as plt 
 plt.style.use('seaborn')
 
@@ -16,7 +17,7 @@ def scatter_3d(x):
     plt.show()
 
 # make some complex 3d data
-def f(x):
+def f_old(x):
     x1 = x[:, 0]; x2 = x[:, 1]
     a = 0.5*torch.sin(x1) + 0.5*torch.cos(2*x2)
     b = 0.2*x1 + 0.1*x2
@@ -26,12 +27,17 @@ def f(x):
 
     return c[..., None]
 
+# a simple gauss w plane
+def f(x):
+    norm = -x.norm(dim=1, keepdim=True).pow(2)
+    return 2*norm.exp() + 0.25*x.sum(dim=1, keepdim=True)
+
 # make dataset for training
 def create_dataset(path, d=3, n=1000, k=4, vis=False):
     # let k be from k different gaussians
     x = None
     for i in range(k):
-        sig = torch.rand(1)
+        sig = torch.rand(1) + 0.5
         loc = torch.randn(1, d-1)
         x_ = torch.randn(n, d-1) * sig + loc 
 
@@ -65,7 +71,7 @@ if __name__ == '__main__':
     # let k be from k different gaussians
     x = None
     for i in range(k):
-        sig = torch.randn(1).abs() / 4
+        sig = torch.randn(1).abs() + 0.5
         loc = torch.randn(1, d-1)
         x_ = torch.randn(n, d-1) * sig + loc 
 
@@ -80,5 +86,4 @@ if __name__ == '__main__':
     # treat data as 3d
     x = torch.cat([x, y], dim=1)
     scatter_3d(x)
-
 

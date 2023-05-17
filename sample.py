@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from einops import repeat, rearrange
 
+from process import gamma 
 from model import Model
 from plot import save_vis, make_gif
 from utils import save_path
@@ -34,32 +35,34 @@ class Sampler:
         self.data_shape = 3 # 3d test data for now
 
     # get intial sample from plane
-    def init_sample(self):
+    def init_sample(self, a=8):
         # place on plane z=0
+        var = 0.5 * ( 1 - np.exp(-a) )
         x = torch.randn(self.batch_size, self.data_shape).to(self.device)
+        x *= np.sqrt(var)
         x[:,2] = 0
         return x
 
     # f(x, t); drift term
-    def f(self, x, t, a=4):
-        f = -2*a*x
+    def f(self, x, t, a=8):
         if t.item() < 0.5:
+            f = -a*x
             f[:, [0,1]] = 0
 
         elif t.item() >= 0.5:
-            f /= 2
+            f = -a*x
             f[:, 2] = 0
 
         return f
 
     # g(x): diffusion term
-    def g(self, x, t):
-        g = t.sqrt() * torch.ones_like(x).to(self.device)
+    def g(self, x, t, a=8):
+        g = torch.ones_like(x).to(self.device)
         if t.item() < 0.5:
-            t_ = 0.25 - (t - 0.25).abs()
-            g[:, 2] = t_.sqrt()
+            g[:, 2] = gamma(t)
 
         elif t.item() >= 0.5:
+            g *= np.sqrt(a)
             g[:, 2] = 0
         
         return g
@@ -73,11 +76,13 @@ class Sampler:
         # include t in input
         t_ = t * torch.ones(x.shape[0], 1).to(self.device)
         x_inp = torch.cat([x, t_], dim=1)
-        score = -model(x_inp)
+        score = model(x_inp)
 
         # brownian noise
+        g_ = g.clone()
+        g_[:, 2] = 0
         dB = dt.sqrt() * torch.randn_like(x).to(self.device)
-        return (-f + g.pow(2)*score)*dt #+ g*dB
+        return (-f + g.pow(2)*score)*dt + 0.5*g_*dB
 
     @torch.no_grad()
     def __call__(self, model, T, save_path='sample.png'):
