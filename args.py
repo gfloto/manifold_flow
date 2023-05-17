@@ -23,9 +23,9 @@ def get_args():
     parser.add_argument('--remake_data', type=str, default='False', help='remake dataset')
 
     # neural network and optimization parameters
-    parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
-    parser.add_argument('--batch_size', type=int, default=64, help='batch size')
-    parser.add_argument('--layers', type=int, default=6, help='number of layers in neural network')
+    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--batch_size', type=int, default=256, help='batch size')
+    parser.add_argument('--layers', type=int, default=8, help='number of layers in neural network')
     parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of neural network')
 
     args = parser.parse_args()

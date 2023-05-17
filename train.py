@@ -12,8 +12,10 @@ def train(model, process, loader, opt, args):
     for i, x0 in enumerate(loader):
         # get t, x0 xt and score
         t = process.t() # get scaled and unscaled t
-        xt, mu = process.xt(x0, t)
-        score = process.score(xt, mu)
+        xt, mu, sig = process.xt(x0, t)
+
+        sig = sig.clamp(min=1e-4)
+        score = process.score(xt, mu, sig)
 
         # input as (x, t)
         t_ = t * torch.ones(xt.shape[0], 1).to(args.device)

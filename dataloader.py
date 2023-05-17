@@ -51,7 +51,7 @@ class Loader:
             ind = self.ind[i * self.batch_size : ]
 
         x = self.x[ind]
-        return x
+        return 2*x
 
     # call this at end of get_batch
     def shuffle_ind(self):

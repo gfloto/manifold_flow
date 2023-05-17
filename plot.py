@@ -9,21 +9,24 @@ plt.style.use('seaborn')
 from utils import ptnp
 
 # save data as a 3d scatter plot
-def save_vis(x, path, i):
+def save_vis(x, path, i, show=False):
     x = ptnp(x)
 
     # plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlim(-3, 3)
-    ax.set_ylim(-3, 3)
+    ax.set_xlim(-6, 6)
+    ax.set_ylim(-6, 6)
     ax.set_zlim(-3, 3)
 
     # set camera angle
     ax.view_init(0.4*i + 10, 0.75*i)
 
     ax.plot(x[:, 0], x[:, 1], x[:, 2], 'o', markersize=2, alpha=0.5)
-    plt.savefig(path)
+    if show:
+        plt.show()
+    else:
+        plt.savefig(path)
     plt.close()
 
 # make gif from images, name is f'path/{}.png' from 0 to n

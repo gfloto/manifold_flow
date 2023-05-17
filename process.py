@@ -17,10 +17,12 @@ class Process:
     def xt(self, x0, t, a=4):
         # noising term / diffusion        
         sig = t.sqrt() * torch.ones_like(x0)
-        sig[:, 2] = 0 # don't noise z
 
         # step  1: project onto manifold
         if t.item() < 0.5:
+            t_ = 0.25 - (t - 0.25).abs()
+            sig[:, 2] = t_.sqrt()
+
             t = 2*t
             mu = x0 * (-a*t).exp()
             mu[:, [0,1]] = x0[:, [0,1]] # project z onto manifold
@@ -28,16 +30,17 @@ class Process:
         # step 2: move torward origin on manifold
         elif t.item() >= 0.5:
             t = 2*t - 1
-            mu = x0 * (-a*t).exp()
+            mu = x0 * (-a/2*t).exp()
             mu[:, 2] = 0 # keep z on manifold
 
+            sig[:, 2] = 0
+        
         xt = mu + sig*torch.randn_like(x0)
-        return xt, mu
+        return xt, mu, sig
 
     # score := grad log pdf, pdf = gaussian 
-    def score(self, xt, mu):
-        # NOTE: according to ddpm, we ignore variance in the score
-        score = (xt - mu).pow(2)
+    def score(self, xt, mu, sigma):
+        score = -0.5 * ( (xt - mu) / sigma ).pow(2)
         return score
 
 import os

@@ -41,41 +41,43 @@ class Sampler:
         return x
 
     # f(x, t); drift term
-    def f(x, t):
-        f = -2*x
+    def f(self, x, t, a=4):
+        f = -2*a*x
         if t.item() < 0.5:
-            f / t
             f[:, [0,1]] = 0
+
         elif t.item() >= 0.5:
-            f / (t-0.5)
+            f /= 2
             f[:, 2] = 0
 
         return f
 
     # g(x): diffusion term
-    def g(x):
-        g = torch.ones_like(x).to(self.device)
-        g[:, 2] = 0
+    def g(self, x, t):
+        g = t.sqrt() * torch.ones_like(x).to(self.device)
+        if t.item() < 0.5:
+            t_ = 0.25 - (t - 0.25).abs()
+            g[:, 2] = t_.sqrt()
+
+        elif t.item() >= 0.5:
+            g[:, 2] = 0
         
         return g
 
     # backward: dx = [f(x,t) - g(x)^2 score_t(x)]dt + g(t)dB
-    def update(self, model, x, t, dt, g_scale=1):
+    def update(self, model, x, t, dt):
         # get f, g, g^2 score and dB
-        f = self.process.sde_f(x)
-        g = self.process.sde_g(x)     
+        f = self.f(x, t)
+        g = self.g(x, t)     
 
-        # set t to tensor, then get score
-        t = torch.tensor([t]).float().to(self.device)
-        g2_score = model(x, t)
+        # include t in input
+        t_ = t * torch.ones(x.shape[0], 1).to(self.device)
+        x_inp = torch.cat([x, t_], dim=1)
+        score = -model(x_inp)
 
-        # check f is not nan
-        assert torch.isnan(f).sum() == 0, f'f is nan: {f}'
-        dB = (np.sqrt(dt) * torch.randn_like(g2_score)).to(self.device) 
-
-        # solve sde: https://en.wikipedia.org/wiki/Euler%E2%80%93Maruyama_method 
-        gdB = torch.einsum('b i j ..., b j ... -> b i ...', g, dB)
-        return (-f + g2_score)*dt + g_scale*gdB
+        # brownian noise
+        dB = dt.sqrt() * torch.randn_like(x).to(self.device)
+        return (-f + g.pow(2)*score)*dt #+ g*dB
 
     @torch.no_grad()
     def __call__(self, model, T, save_path='sample.png'):
@@ -89,27 +91,21 @@ class Sampler:
         t = torch.tensor([1.]).to(self.device)
         dt = t / T
 
-        # noise schedule
-        g_scale = np.linspace(0,1,T)[::-1]
-        g_scale = 1.75*np.power(g_scale, 1.5)
-
         # sample loop
         d = 50
         for i in tqdm(range(T)):
             # update x
-            change = self.update(model, x, t[i], dt[i], g_scale[i])
+            change = self.update(model, x, t, dt)
             x = x + change
+            t -= dt
 
             # save sample
             if i % d == 0:
-                save_vis(x.clone(), f'imgs/{int(i/d)}.png',i/d)
-
-        # discretize
-        for i in range(int(T/d), int(T/d)+10):
-            save_vis(x, f'imgs/{i}.png', i/d)
+                save_vis(x.clone(), f'imgs/{int(i/d)}.png', i/d)
 
         # save gif
-        make_gif('imgs', save_path, int(T/d)+10)
+        save_vis(x.clone(), f'imgs/{int(i/d)}.png', i/d, show=True)
+        make_gif('imgs', save_path, int(T/d))
 
 import json
 import argparse
@@ -124,7 +120,7 @@ def get_sample_args():
     return args
 
 if __name__ == '__main__':
-    batch_size = 128
+    batch_size = 5000
     sample_args = get_sample_args()
     path = os.path.join('results', sample_args.exp)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'

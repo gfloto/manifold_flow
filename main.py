@@ -32,11 +32,9 @@ if __name__ == '__main__':
     model = Model(args)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    # option to load from checkpoint
-    # TODO: have epochs saved as well...
-
     # train
     loss_track = []
+    save_flag = False
     for epoch in range(args.epochs):
         loss = train(model, process, loader, opt, args)
 
@@ -46,12 +44,18 @@ if __name__ == '__main__':
 
         # save model and optimizer if best loss
         if loss == min(loss_track):
-            torch.save(model.state_dict(), save_path(args, f'model.pt'))
-            torch.save(opt.state_dict(), save_path(args, f'opt.pt'))
+            save_flag = True
 
-        # plot loss 
-        np.save(save_path(args, 'loss.npy'), np.array(loss_track))
-        plt.plot(loss_track)
-        plt.yscale('log')
-        plt.savefig(save_path(args, 'loss.png'))
-        plt.close()
+        # plot loss and save model
+        if epoch % 100 == 0:
+            np.save(save_path(args, 'loss.npy'), np.array(loss_track))
+            plt.plot(loss_track)
+            plt.yscale('log')
+            plt.savefig(save_path(args, 'loss.png'))
+            plt.close()
+
+            if save_flag:
+                save_flag = False
+                print('saving model...')
+                torch.save(model.state_dict(), save_path(args, f'model.pt'))
+                torch.save(opt.state_dict(), save_path(args, f'opt.pt'))
