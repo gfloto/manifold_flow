@@ -82,7 +82,7 @@ class Sampler:
         g_ = g.clone()
         g_[:, 2] = 0
         dB = dt.sqrt() * torch.randn_like(x).to(self.device)
-        return (-f + g.pow(2)*score)*dt + 0.5*g_*dB
+        return (-f + g.pow(2)*score)*dt + 0.425*g_*dB
 
     @torch.no_grad()
     def __call__(self, model, T, save_path='sample.png'):
@@ -125,7 +125,7 @@ def get_sample_args():
     return args
 
 if __name__ == '__main__':
-    batch_size = 5000
+    batch_size = 2048
     sample_args = get_sample_args()
     path = os.path.join('results', sample_args.exp)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
